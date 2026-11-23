@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>月額負担額計算</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: #f8fafc;
+            background: radial-gradient(circle at top left, #374151, transparent 38%), linear-gradient(135deg, #111827, #1e293b);
+        }
+
+        .container {
+            width: min(94%, 520px);
+            margin: 0 auto;
+            padding: 32px 0;
+        }
+
+        .hero {
+            margin-bottom: 24px;
+        }
+
+        .eyebrow {
+            margin: 0 0 8px;
+            color: #93c5fd;
+            font-size: 13px;
+            letter-spacing: 0.14em;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.2;
+        }
+
+        .description {
+            color: #cbd5e1;
+            line-height: 1.7;
+        }
+
+        .card {
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            background: rgba(15, 23, 42, 0.82);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(16px);
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #475569;
+            border-radius: 14px;
+            outline: none;
+            color: #f8fafc;
+            background: #1e293b;
+            font-size: 18px;
+        }
+
+            input:focus {
+                border-color: #60a5fa;
+                box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+            }
+
+            input[readonly] {
+                color: #cbd5e1;
+                background: #334155;
+            }
+
+        .unit {
+            margin-top: 6px;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 8px;
+            padding: 15px;
+            border: 0;
+            border-radius: 14px;
+            color: #082f49;
+            background: linear-gradient(135deg, #7dd3fc, #60a5fa);
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+            button:hover {
+                filter: brightness(1.08);
+            }
+
+            button:disabled {
+                cursor: wait;
+                opacity: 0.6;
+            }
+
+        .error {
+            display: none;
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 12px;
+            color: #fecaca;
+            background: rgba(127, 29, 29, 0.5);
+        }
+
+        .result {
+            display: none;
+            margin-top: 24px;
+        }
+
+            .result h2 {
+                margin: 0 0 16px;
+                font-size: 20px;
+            }
+
+        .result-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px;
+            border-radius: 14px;
+            background: rgba(51, 65, 85, 0.75);
+        }
+
+            .result-item strong {
+                color: #7dd3fc;
+                font-size: 20px;
+            }
+
+        .loading {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <section class="hero">
+            <p class="eyebrow">CALCULATION MONTH COST</p>
+            <h1>月額負担額を計算</h1>
+            <p class="description">
+                クレジット利用額を入力すると、くまとおくの負担額を計算します。
+            </p>
+        </section>
+
+        <section class="card">
+            <form id="calculationForm">
+                <div class="field">
+                    <label for="amount">クレジット利用額</label>
+			<input id="amount" name="amount" type="number"
+      				 min="1" step="1" inputmode="numeric"
+      				 placeholder="例：10000" required>
+                    <div class="unit">円</div>
+                </div>
+
+                <div class="field">
+                    <label for="personS">くまの固定費</label>
+                    <input id="personS" type="number" readonly>
+                    <div class="unit">APIから自動設定</div>
+                </div>
+
+                <div class="field">
+                    <label for="personA">おくの固定費</label>
+                    <input id="personA" type="number" readonly>
+                    <div class="unit">APIから自動設定</div>
+                </div>
+
+                <p id="loading" class="loading">固定費を読み込んでいます...</p>
+
+                <button id="calculateButton" type="submit">
+                    負担額を計算する
+                </button>
+            </form>
+
+            <div id="error" class="error"></div>
+
+            <section id="result" class="result">
+                <h2>計算結果</h2>
+
+                <div class="result-grid">
+                    <div class="result-item">
+                        <span>基本負担額</span>
+                        <strong id="baseAmount">-</strong>
+                    </div>
+
+                    <div class="result-item">
+                        <span>くまの負担額</span>
+                        <strong id="personSResult">-</strong>
+                    </div>
+
+                    <div class="result-item">
+                        <span>おくの負担額</span>
+                        <strong id="personAResult">-</strong>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>const form = document.getElementById("calculationForm");
+        const amountInput = document.getElementById("amount");
+        const personSInput = document.getElementById("personS");
+        const personAInput = document.getElementById("personA");
+        const loading = document.getElementById("loading");
+        const error = document.getElementById("error");
+        const result = document.getElementById("result");
+        const calculateButton = document.getElementById("calculateButton");
+
+        const formatter = new Intl.NumberFormat("ja-JP");
+
+        function formatYen(value) {
+            return `${formatter.format(value)} 円`;
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = "block";
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch("/api/Cost/settings");
+
+                if (!response.ok) {
+                    throw new Error("固定費設定を取得できませんでした。");
+                }
+
+                const settings = await response.json();
+
+                personSInput.value = settings.personS;
+                personAInput.value = settings.personA;
+                loading.style.display = "none";
+            } catch (exception) {
+                showError(exception.message);
+                loading.textContent = "固定費の読み込みに失敗しました。";
+            }
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            error.style.display = "none";
+            result.style.display = "none";
+            calculateButton.disabled = true;
+
+            try {
+                const response = await fetch("/api/Cost/calculate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        amount: Number(amountInput.value)
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("計算に失敗しました。");
+                }
+
+                const data = await response.json();
+
+                document.getElementById("baseAmount").textContent =
+                    formatYen(data.baseAmount);
+
+                document.getElementById("personSResult").textContent =
+                    formatYen(data.personS);
+
+                document.getElementById("personAResult").textContent =
+                    formatYen(data.personA);
+
+                result.style.display = "block";
+            } catch (exception) {
+                showError(exception.message);
+            } finally {
+                calculateButton.disabled = false;
+            }
+        });
+
+        loadSettings();</script>
+</body>
+</html>
